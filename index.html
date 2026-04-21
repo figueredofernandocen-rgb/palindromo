@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Palíndromo Recursivo — Visualizador</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --match:   #22c55e;
+      --nomatch: #ef4444;
+      --active:  #f59e0b;
+      --base:    #818cf8;
+      --bg:      #0f172a;
+      --card:    #1e293b;
+      --border:  #334155;
+      --text:    #e2e8f0;
+      --muted:   #94a3b8;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    /* Header */
+    .header { text-align: center; margin-bottom: 24px; }
+    .badge {
+      display: inline-block;
+      background: linear-gradient(135deg,#4f46e5,#818cf8);
+      border-radius: 12px; padding: 3px 16px;
+      font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      color: #c7d2fe; margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 26px; font-weight: 800;
+      background: linear-gradient(90deg,#a5b4fc,#e0e7ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px;
+    }
+    .card-label {
+      font-size: 10px; color: var(--muted);
+      letter-spacing: 1px; text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    /* Input row */
+    #input-section { margin-bottom: 14px; }
+    .input-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    #word-input {
+      flex: 1; min-width: 160px;
+      background: #0f172a; border: 2px solid var(--border);
+      border-radius: 8px; padding: 10px 14px;
+      color: var(--text); font-size: 18px; font-family: monospace;
+      font-weight: 700; letter-spacing: 4px; outline: none;
+    }
+    #word-input:focus { border-color: #4f46e5; }
+    .examples-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+    .ex-label { color: var(--muted); font-size: 12px; }
+    .ex-btn {
+      background: #1e293b; color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 10px;
+      cursor: pointer; font-size: 12px;
+      font-family: monospace; font-weight: 600;
+      transition: all 0.15s;
+    }
+    .ex-btn.active, .ex-btn:hover {
+      background: #1e3a5f; color: #93c5fd; border-color: #3b82f6;
+    }
+
+    /* Two-column grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+      align-items: start;
+    }
+    .col { display: flex; flex-direction: column; gap: 14px; }
+
+    /* Word display */
+    #word-display {
+      display: flex; justify-content: center;
+      gap: 6px; flex-wrap: wrap; padding: 8px 0;
+    }
+    .char-cell {
+      width: 44px; height: 54px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border-radius: 8px; border: 2px solid var(--border);
+      background: var(--card); color: var(--muted);
+      font-family: monospace; font-size: 20px; font-weight: 700;
+      transition: all 0.25s ease;
+    }
+    .char-cell .idx { font-size: 9px; color: var(--muted); margin-top: 2px; }
+
+    .pointers-row {
+      display: flex; justify-content: center;
+      gap: 16px; margin-top: 12px; flex-wrap: wrap; align-items: center;
+    }
+    .ptr-label { font-size: 12px; color: var(--muted); }
+    .type-badge {
+      font-size: 11px; font-weight: 700;
+      padding: 2px 10px; border-radius: 4px;
+    }
+    .note-box {
+      margin-top: 10px; padding: 9px 12px;
+      background: #0f172a; border-radius: 8px;
+      border-left: 3px solid var(--active);
+      font-size: 12px; color: var(--text); font-family: monospace;
+    }
+
+    /* Pseudocode */
+    .pseudo-line {
+      padding: 5px 10px; border-radius: 6px;
+      font-family: monospace; font-size: 11px;
+      color: var(--muted);
+      border-left: 3px solid transparent;
+      margin-bottom: 1px;
+      transition: all 0.2s;
+      white-space: pre;
+    }
+    .pseudo-line.hl {
+      color: #fff; background: #1e3a5f;
+      border-left-color: var(--active);
+    }
+
+    /* Stack & Tree panels */
+    .panel {
+      background: #0d1b2a; border-radius: 10px;
+      padding: 14px; min-height: 80px;
+    }
+    .panel-label {
+      font-size: 10px; color: var(--muted);
+      letter-spacing: 1px; text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .stack-item {
+      padding: 5px 10px; margin-bottom: 3px; border-radius: 6px;
+      font-size: 11px; font-family: monospace;
+      border: 1px solid var(--border);
+      color: var(--muted); background: #142038;
+    }
+    .stack-item.top {
+      background: #1a3050; color: var(--active);
+      border-color: #f59e0b88;
+    }
+    .stack-tag { font-size: 9px; margin-left: 8px; }
+    .empty-msg { color: var(--muted); font-size: 12px; font-style: italic; }
+
+    .tree-node { }
+    .tree-row {
+      display: flex; align-items: center;
+      padding: 4px 10px; margin: 2px 0; border-radius: 6px;
+      border: 1px solid transparent;
+      font-size: 11px; font-family: monospace;
+      transition: all 0.2s;
+    }
+    .tree-row.cur {
+      background: #1a3050;
+      border-color: #f59e0b55;
+    }
+    .tree-connector { color: var(--border); margin-right: 4px; }
+    .tree-result {
+      border-radius: 4px; padding: 1px 6px;
+      font-size: 10px; margin-left: 6px;
+      border: 1px solid;
+    }
+    .tree-cur-arrow { margin-left: 6px; font-size: 10px; color: var(--active); }
+
+    /* Controls */
+    #controls {
+      display: flex; align-items: center;
+      gap: 8px; flex-wrap: wrap;
+      margin-bottom: 0;
+    }
+    .btn {
+      background: #1e3a5f; color: #fff;
+      border: 1px solid #3b82f6;
+      border-radius: 8px; padding: 8px 14px;
+      cursor: pointer; font-size: 14px; font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn:hover { background: #1e4a7f; }
+    .btn:disabled { background: #1e293b; color: #334155; border-color: var(--border); cursor: not-allowed; }
+    .btn.primary {
+      background: linear-gradient(135deg,#4f46e5,#7c3aed);
+      border-color: transparent;
+    }
+    .btn.primary:hover { opacity: 0.9; }
+    .speed-group { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .speed-label { font-size: 11px; color: var(--muted); }
+    #speed-range { width: 70px; }
+    #step-counter { font-size: 11px; color: var(--muted); }
+
+    /* Result banner */
+    #result-banner {
+      display: none;
+      margin-top: 14px; padding: 16px 24px; border-radius: 14px;
+      text-align: center; font-size: 16px; font-weight: 700;
+    }
+
+    .footer { text-align: center; color: #334155; font-size: 11px; margin-top: 16px; }
+
+    @media (max-width: 700px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge">Complejidad Algorítmica</div>
+    <h1>Palíndromo Recursivo</h1>
+    <p class="subtitle">Visualizador paso a paso de la recursión</p>
+  </div>
+
+  <!-- Input -->
+  <div class="card" id="input-section">
+    <div class="input-row">
+      <input id="word-input" maxlength="12" placeholder="Ingresá una palabra..." value="ANANA" />
+      <button class="btn primary" onclick="doAnalyze()">Analizar</button>
+    </div>
+    <div class="examples-row">
+      <span class="ex-label">Ejemplos:</span>
+      <button class="ex-btn active" onclick="loadExample(this,'ANANA')">ANANA</button>
+      <button class="ex-btn" onclick="loadExample(this,'RADAR')">RADAR</button>
+      <button class="ex-btn" onclick="loadExample(this,'HOLA')">HOLA</button>
+      <button class="ex-btn" onclick="loadExample(this,'ABA')">ABA</button>
+      <button class="ex-btn" onclick="loadExample(this,'LEVEL')">LEVEL</button>
+      <button class="ex-btn" onclick="loadExample(this,'MUNDO')">MUNDO</button>
+    </div>
+  </div>
+
+  <!-- Main two-column grid -->
+  <div class="main-grid">
+
+    <!-- LEFT -->
+    <div class="col">
+
+      <!-- Word display -->
+      <div class="card">
+        <div class="card-label">Palabra analizada</div>
+        <div id="word-display"></div>
+        <div class="pointers-row">
+          <span class="ptr-label" id="ptr-izq">🟢 izq = 0</span>
+          <span class="ptr-label" id="ptr-der">🔵 der = 0</span>
+          <span class="type-badge" id="type-badge"></span>
+        </div>
+        <div class="note-box" id="note-box"></div>
+      </div>
+
+      <!-- Pseudocode -->
+      <div class="card">
+        <div class="card-label">Pseudocódigo — línea activa</div>
+        <div id="pseudocode"></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col">
+      <div class="panel">
+        <div class="panel-label">Pila de llamadas</div>
+        <div id="call-stack"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Árbol de recursión</div>
+        <div id="tree-view"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Controls -->
+  <div class="card" id="controls">
+    <button class="btn" id="btn-start" onclick="goStart()" disabled>⏮</button>
+    <button class="btn" id="btn-prev"  onclick="goPrev()"  disabled>◀</button>
+    <button class="btn primary" id="btn-play" onclick="togglePlay()">▶ Reproducir</button>
+    <button class="btn" id="btn-next"  onclick="goNext()">▶</button>
+    <button class="btn" id="btn-end"   onclick="goEnd()">⏭</button>
+    <div class="speed-group">
+      <span class="speed-label">Velocidad</span>
+      <input type="range" id="speed-range" min="200" max="1800" step="100" value="1100"
+             oninput="updateSpeed(this.value)" />
+      <span id="step-counter">Paso 1/1</span>
+    </div>
+  </div>
+
+  <div id="result-banner"></div>
+
+  <p class="footer">Complejidad: O(n/2) llamadas recursivas · O(n) espacio en pila</p>
+
+</div>
+
+<script>
+// ─── Colors ───────────────────────────────────────────────────────────────────
+const C = {
+  match:   "#22c55e",
+  noMatch: "#ef4444",
+  active:  "#f59e0b",
+  base:    "#818cf8",
+  bg:      "#0f172a",
+  card:    "#1e293b",
+  border:  "#334155",
+  text:    "#e2e8f0",
+  muted:   "#94a3b8",
+};
+
+const typeInfo = {
+  "call":          { label: "Llamada recursiva",    color: C.active  },
+  "base-center":   { label: "Caso base — centro",   color: C.base    },
+  "base-mismatch": { label: "Caso base — mismatch", color: C.noMatch },
+  "return":        { label: "Retorno",              color: C.match   },
+};
+
+// ─── Build steps ──────────────────────────────────────────────────────────────
+function buildSteps(w) {
+  const steps = [];
+  let cc = 0;
+  function recurse(izq, der, depth) {
+    const id = ++cc;
+    if (izq >= der) {
+      steps.push({ id, depth, izq, der, word: w, type: "base-center", result: true,
+        note: izq === der
+          ? `izq === der = ${izq} (carácter central '${w[izq].toUpperCase()}') → caso base ✓`
+          : `izq(${izq}) > der(${der}) → cruce → caso base ✓` });
+      return true;
+    }
+    if (w[izq] !== w[der]) {
+      steps.push({ id, depth, izq, der, word: w, type: "base-mismatch", result: false,
+        note: `'${w[izq].toUpperCase()}' ≠ '${w[der].toUpperCase()}' → no es palíndromo ✗` });
+      return false;
+    }
+    steps.push({ id, depth, izq, der, word: w, type: "call", result: null,
+      note: `'${w[izq].toUpperCase()}' === '${w[der].toUpperCase()}' → llamada recursiva(izq=${izq+1}, der=${der-1})` });
+    const res = recurse(izq + 1, der - 1, depth + 1);
+    steps.push({ id, depth, izq, der, word: w, type: "return", result: res,
+      note: `Retorna ${res} hacia la llamada de profundidad ${depth - 1 < 0 ? "raíz" : depth - 1}` });
+    return res;
+  }
+  recurse(0, w.length - 1, 0);
+  return steps;
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let steps = [];
+let idx   = 0;
+let playing = false;
+let speed   = 900;
+let timer   = null;
+
+// ─── Render word ──────────────────────────────────────────────────────────────
+function renderWord(s) {
+  const el = document.getElementById("word-display");
+  el.innerHTML = "";
+  const w = s.word;
+  for (let i = 0; i < w.length; i++) {
+    const isCenter = i === s.izq && i === s.der;
+    const isLeft   = i === s.izq && !isCenter;
+    const isRight  = i === s.der && !isCenter;
+    const inside   = i > s.izq && i < s.der;
+
+    let bg = C.card, border = C.border, color = C.muted, scale = "scale(1)", glow = "none";
+    if (isCenter) {
+      bg = "#2e1065"; border = C.base; color = C.base;
+      scale = "scale(1.25)"; glow = `0 0 14px ${C.base}88`;
+    } else if (isLeft || isRight) {
+      const ok = s.type !== "base-mismatch";
+      bg     = ok ? "#052e16" : "#450a0a";
+      border = ok ? C.match : C.noMatch;
+      color  = ok ? C.match : C.noMatch;
+      scale = "scale(1.2)";
+      glow  = `0 0 12px ${ok ? C.match : C.noMatch}66`;
+    } else if (inside) {
+      bg = "#1e2d40"; border = "#3b5268"; color = C.text;
+    }
+
+    const cell = document.createElement("div");
+    cell.className = "char-cell";
+    cell.style.cssText = `background:${bg};border-color:${border};color:${color};transform:${scale};box-shadow:${glow};`;
+    cell.innerHTML = `${w[i].toUpperCase()}<span class="idx">[${i}]</span>`;
+    el.appendChild(cell);
+  }
+}
+
+// ─── Render pseudocode ────────────────────────────────────────────────────────
+function renderPseudo(s) {
+  const lines = [
+    { text: `FUNCIÓN esPalindromo(cadena, izq, der)`,                                        hl: false },
+    { text: `  SI izq(${s.izq}) >= der(${s.der})`,                                           hl: s.type === "base-center" },
+    { text: `    → RETORNAR verdadero`,                                                        hl: s.type === "base-center" },
+    { text: `  SI cadena[${s.izq}]='${s.word[s.izq]?.toUpperCase()}' ≠ cadena[${s.der}]='${s.word[s.der]?.toUpperCase()}'`, hl: s.type === "base-mismatch" },
+    { text: `    → RETORNAR falso`,                                                            hl: s.type === "base-mismatch" },
+    { text: `  RETORNAR esPalindromo(`,                                                        hl: s.type === "call" },
+    { text: `    cadena, izq+1=${s.izq+1}, der-1=${s.der-1})`,                                hl: s.type === "call" },
+    { text: `  ← retorna ${s.result !== null ? s.result : "…"}`,                             hl: s.type === "return" },
+  ];
+  const el = document.getElementById("pseudocode");
+  el.innerHTML = lines.map(l =>
+    `<div class="pseudo-line${l.hl ? " hl" : ""}">${escHtml(l.text)}</div>`
+  ).join("");
+}
+
+// ─── Render call stack ────────────────────────────────────────────────────────
+function renderStack() {
+  const open = [];
+  for (let i = 0; i <= idx; i++) {
+    const s = steps[i];
+    if (s.type === "call")   open.push(s);
+    if (s.type === "return") open.pop();
+  }
+  const el = document.getElementById("call-stack");
+  if (open.length === 0) {
+    el.innerHTML = `<div class="empty-msg">vacía</div>`; return;
+  }
+  const rev = [...open].reverse();
+  el.innerHTML = rev.map((s, i) =>
+    `<div class="stack-item ${i === 0 ? "top" : ""}">
+      ${"· ".repeat(s.depth)}f(izq=<b>${s.izq}</b>, der=<b>${s.der}</b>)
+      ${i === 0 ? `<span class="stack-tag" style="color:${C.active}">← activa</span>` : ""}
+    </div>`
+  ).join("");
+}
+
+// ─── Render tree ──────────────────────────────────────────────────────────────
+function buildTree() {
+  const roots = [], stack = [];
+  for (let i = 0; i <= idx; i++) {
+    const s = steps[i];
+    if (s.type === "call") {
+      const node = { ...s, stepIdx: i, children: [], done: false };
+      if (stack.length) stack[stack.length - 1].children.push(node);
+      else roots.push(node);
+      stack.push(node);
+    } else if (s.type === "base-center" || s.type === "base-mismatch") {
+      const node = { ...s, stepIdx: i, children: [], done: true };
+      if (stack.length) stack[stack.length - 1].children.push(node);
+      else roots.push(node);
+    } else if (s.type === "return" && stack.length) {
+      const top = stack.pop();
+      top.done = true; top.result = s.result;
+    }
+  }
+  return roots;
+}
+
+function renderTreeNode(node, depth) {
+  const cur = steps[idx];
+  const isCur = node.stepIdx === idx ||
+    (cur.type === "return" && cur.depth === node.depth && node.done && node.result === cur.result);
+
+  const col = node.type === "base-mismatch" ? C.noMatch
+    : node.type === "base-center" ? C.base
+    : node.done ? (node.result ? C.match : C.noMatch)
+    : C.muted;
+
+  const resultVal = node.type === "base-center" ? true
+    : node.type === "base-mismatch" ? false
+    : node.result;
+
+  const badge = node.done
+    ? `<span class="tree-result" style="background:${col}22;color:${col};border-color:${col}44">${resultVal}</span>`
+    : "";
+  const arrow = isCur ? `<span class="tree-cur-arrow">◄</span>` : "";
+  const connector = depth > 0 ? `<span class="tree-connector">└─</span>` : "";
+  const chars = `<span style="color:${C.muted};margin-left:4px;font-size:10px">"${node.word[node.izq]?.toUpperCase()}"…"${node.word[node.der]?.toUpperCase()}"</span>`;
+
+  let html = `<div style="margin-left:${depth * 18}px">
+    <div class="tree-row ${isCur ? "cur" : ""}" style="color:${col}">
+      ${connector}
+      f(<b style="color:${C.text}">${node.izq}</b>,<b style="color:${C.text}">${node.der}</b>)
+      ${chars}${badge}${arrow}
+    </div>`;
+  for (const child of node.children) html += renderTreeNode(child, depth + 1);
+  html += `</div>`;
+  return html;
+}
+
+function renderTree() {
+  const roots = buildTree();
+  document.getElementById("tree-view").innerHTML = roots.map(n => renderTreeNode(n, 0)).join("");
+}
+
+// ─── Full render ──────────────────────────────────────────────────────────────
+function render() {
+  const s  = steps[idx];
+  const ti = typeInfo[s.type] || { label: s.type, color: C.muted };
+  const last = idx === steps.length - 1;
+
+  renderWord(s);
+  renderPseudo(s);
+  renderStack();
+  renderTree();
+
+  document.getElementById("ptr-izq").textContent = `🟢 izq = ${s.izq}`;
+  document.getElementById("ptr-der").textContent = `🔵 der = ${s.der}`;
+
+  const badge = document.getElementById("type-badge");
+  badge.textContent = ti.label;
+  badge.style.cssText = `background:${ti.color}22;color:${ti.color};border:1px solid ${ti.color}44;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:700`;
+
+  const noteBox = document.getElementById("note-box");
+  noteBox.textContent = s.note;
+  noteBox.style.borderLeftColor = ti.color;
+
+  document.getElementById("step-counter").textContent = `Paso ${idx + 1}/${steps.length}`;
+
+  document.getElementById("btn-start").disabled = idx === 0;
+  document.getElementById("btn-prev").disabled  = idx === 0;
+  document.getElementById("btn-next").disabled  = last;
+  document.getElementById("btn-end").disabled   = last;
+
+  // Result banner
+  const banner = document.getElementById("result-banner");
+  if (last) {
+    const ok = steps[steps.length - 1].result;
+    banner.style.display = "block";
+    banner.style.background = ok ? "#052e16" : "#450a0a";
+    banner.style.border = `2px solid ${ok ? C.match : C.noMatch}`;
+    banner.style.color  = ok ? C.match : C.noMatch;
+    banner.textContent  = ok
+      ? `✓  "${s.word.toUpperCase()}"  ES un palíndromo`
+      : `✗  "${s.word.toUpperCase()}"  NO es un palíndromo`;
+  } else {
+    banner.style.display = "none";
+  }
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function goStart() { stopPlay(); idx = 0; render(); }
+function goPrev()  { stopPlay(); idx = Math.max(0, idx - 1); render(); }
+function goNext()  { stopPlay(); idx = Math.min(steps.length - 1, idx + 1); render(); }
+function goEnd()   { stopPlay(); idx = steps.length - 1; render(); }
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById("btn-play").textContent = playing ? "⏸ Pausar" : "▶ Reproducir";
+  if (playing) tick();
+}
+function stopPlay() {
+  playing = false;
+  clearTimeout(timer);
+  document.getElementById("btn-play").textContent = "▶ Reproducir";
+}
+function tick() {
+  if (!playing) return;
+  if (idx >= steps.length - 1) { stopPlay(); return; }
+  idx++;
+  render();
+  timer = setTimeout(tick, speed);
+}
+function updateSpeed(val) {
+  speed = 2000 - Number(val);
+}
+
+// ─── Analyze ──────────────────────────────────────────────────────────────────
+function doAnalyze(raw) {
+  const w = (raw || document.getElementById("word-input").value).toLowerCase().replace(/\s/g, "");
+  if (!w) return;
+  stopPlay();
+  steps = buildSteps(w);
+  idx   = 0;
+  render();
+}
+
+function loadExample(btn, word) {
+  document.querySelectorAll(".ex-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("word-input").value = word;
+  doAnalyze(word);
+}
+
+// ─── Input listeners ─────────────────────────────────────────────────────────
+document.getElementById("word-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") doAnalyze();
+});
+document.getElementById("word-input").addEventListener("input", e => {
+  e.target.value = e.target.value.toUpperCase();
+  document.querySelectorAll(".ex-btn").forEach(b => b.classList.remove("active"));
+});
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function escHtml(t) {
+  return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+steps = buildSteps("anana");
+render();
+</script>
+</body>
+</html>
